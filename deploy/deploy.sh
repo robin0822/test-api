@@ -47,7 +47,8 @@ tmp_conf="$(mktemp)"
 trap 'rm -f "${tmp_conf}"' EXIT
 cat >"${tmp_conf}" <<EOF
 server {
-    listen 80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name ${SERVER_NAME};
 
     location / {
@@ -57,6 +58,7 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
     }
 }
 EOF
