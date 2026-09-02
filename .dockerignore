@@ -1,5 +1,11 @@
 .git
 .github
 deploy
+docs
+tests
 README.md
+.env
 .DS_Store
+*.db
+__pycache__
+.pytest_cache

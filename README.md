@@ -1,58 +1,60 @@
-# test-api
+# Document Summary API
 
-用于验证 GitHub Actions、GHCR、Docker、服务器和 Nginx 之间完整部署链路的静态网页项目。
+Word/Excel 异步模型总结服务。支持 `.doc`、`.docx`、`.xls`、`.xlsx` 批量上传，通过 FastAPI、Celery、Redis 和 PostgreSQL 完成异步解析与总结。
 
-## 部署链路
+## 核心接口
 
-```text
-push main
-  -> GitHub Actions 构建 linux/arm64 镜像
-  -> 推送 ghcr.io/robin0822/test-api:latest
-  -> 服务器执行 deploy/deploy.sh
-  -> Docker 拉取并启动容器
-  -> 宿主机 Nginx 反向代理
-  -> http://172.29.231.119
-```
+- `POST /api/v1/documents`：异步批量上传
+- `GET /api/v1/documents/{id}`：查询单个结果
+- `GET /api/v1/batches/{batch_id}`：查询批次结果
+- `GET /api/v1/documents`：分页查询历史记录
+- `POST /api/v1/documents/{id}/retry`：重试模型总结失败记录
+- `GET /health`：健康检查
 
-## 本地验证
+完整说明见 [docs/API.md](docs/API.md)，服务启动后也可访问 `/docs`。
+
+## 本地启动
 
 ```bash
-docker build -t test-api:local .
-docker run --rm -p 13000:8080 test-api:local
+cp .env.example .env
+# 修改 .env 中的密码、API Token 和 MODEL_API_KEY
+docker compose up -d
 curl http://127.0.0.1:13000/health
 ```
 
-## 服务器部署
+基础设施联调时可设置 `MODEL_MOCK=true`；真实模型测试必须设置新生成的 `MODEL_API_KEY`。
 
-将 `deploy/deploy.sh` 上传到服务器后执行：
-
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-脚本默认拉取 `ghcr.io/robin0822/test-api:latest`，容器只绑定到
-`127.0.0.1:13000`，并配置宿主机 Nginx 对外提供 80 端口。
-
-如果 GHCR 镜像为私有，需要先提供 GitHub PAT（至少具有 `read:packages`）：
+## 测试
 
 ```bash
-export GHCR_USERNAME=robin0822
-export GHCR_TOKEN='your-token'
-./deploy.sh
+pytest -q
 ```
 
-可通过环境变量覆盖默认值：
+服务器端完整链路：
 
 ```bash
-IMAGE=ghcr.io/robin0822/test-api:<commit-sha> \
-HOST_PORT=13000 \
-SERVER_NAME=172.29.231.119 \
-./deploy.sh
+deploy/smoke-test.sh
 ```
 
-## GitHub Actions 权限
+手动构建 ARM64 镜像：
 
-工作流使用仓库自带的 `GITHUB_TOKEN` 发布 GHCR 镜像。仓库设置中需要允许
-GitHub Actions 拥有 `Read and write permissions`。首次发布后，如果希望服务器
-无需登录即可拉取，需要在 GitHub Packages 中将镜像可见性设置为 Public。
+```bash
+PUSH=true IMAGE=ghcr.io/robin0822/test-api deploy/build-image.sh
+```
+
+## 部署
+
+GitHub Actions 在每次推送 `main` 时构建 `linux/arm64` 镜像并发布：
+
+```text
+ghcr.io/robin0822/test-api:latest
+```
+
+服务器执行：
+
+```bash
+chmod +x deploy/deploy-v2.sh
+./deploy/deploy-v2.sh
+```
+
+部署目录为 `/opt/test-api`。模型密钥只允许写入服务器的 `/opt/test-api/.env`，禁止提交到 Git。
