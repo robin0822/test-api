@@ -1,30 +1,43 @@
-import os
 import subprocess
-import tempfile
 from pathlib import Path
 from docx import Document
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 from openpyxl import load_workbook
+import xlrd
 
 
 class ParseError(RuntimeError):
     pass
 
 
-def _convert_legacy(path: Path) -> Path:
-    target_ext = ".docx" if path.suffix.lower() == ".doc" else ".xlsx"
-    with tempfile.TemporaryDirectory() as output_dir:
-        result = subprocess.run(
-            ["libreoffice", "--headless", "--convert-to", target_ext[1:], "--outdir", output_dir, str(path)],
-            capture_output=True, text=True, timeout=120, env={**os.environ, "HOME": "/tmp"},
-        )
-        converted = Path(output_dir) / f"{path.stem}{target_ext}"
-        if result.returncode != 0 or not converted.exists():
-            raise ParseError(f"LibreOffice conversion failed: {result.stderr[-500:]}")
-        permanent = path.with_suffix(target_ext)
-        permanent.write_bytes(converted.read_bytes())
-        return permanent
+def _parse_doc(path: Path) -> str:
+    result = subprocess.run(["antiword", str(path)], capture_output=True, timeout=120)
+    if result.returncode != 0:
+        raise ParseError(f"Antiword parsing failed: {result.stderr.decode(errors='replace')[-500:]}")
+    text = result.stdout.decode("utf-8", errors="replace").strip()
+    if not text:
+        raise ParseError("Word document contains no extractable text")
+    return f"[文件] {path.name}\n{text}"
+
+
+def _parse_xls(path: Path) -> str:
+    workbook = xlrd.open_workbook(path, on_demand=True)
+    parts: list[str] = [f"[文件] {path.name}"]
+    for sheet in workbook.sheets():
+        if getattr(sheet, "visibility", 0) != 0:
+            continue
+        parts.append(f"\n[工作表] {sheet.name}")
+        for row_index in range(sheet.nrows):
+            values = [str(sheet.cell_value(row_index, column_index)) for column_index in range(sheet.ncols)]
+            while values and not values[-1]:
+                values.pop()
+            if any(values):
+                parts.append(" | ".join(values))
+    workbook.release_resources()
+    if len(parts) <= 1:
+        raise ParseError("Excel workbook contains no visible data")
+    return "\n".join(parts)
 
 
 def _parse_docx(path: Path) -> str:
@@ -72,12 +85,12 @@ def _parse_xlsx(path: Path) -> str:
 
 def extract_document(path_value: str) -> str:
     path = Path(path_value)
-    converted: Path | None = None
     try:
         suffix = path.suffix.lower()
-        if suffix in {".doc", ".xls"}:
-            converted = _convert_legacy(path)
-            path, suffix = converted, converted.suffix.lower()
+        if suffix == ".doc":
+            return _parse_doc(path)
+        if suffix == ".xls":
+            return _parse_xls(path)
         if suffix == ".docx":
             return _parse_docx(path)
         if suffix == ".xlsx":
@@ -87,6 +100,3 @@ def extract_document(path_value: str) -> str:
         raise
     except Exception as exc:
         raise ParseError(str(exc)) from exc
-    finally:
-        if converted:
-            converted.unlink(missing_ok=True)

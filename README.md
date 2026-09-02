@@ -1,6 +1,6 @@
 # Document Summary API
 
-Word/Excel 异步模型总结服务。支持 `.doc`、`.docx`、`.xls`、`.xlsx` 批量上传，通过 FastAPI、Celery、Redis 和 PostgreSQL 完成异步解析与总结。
+Word/Excel 异步模型总结服务。支持 `.doc`、`.docx`、`.xls`、`.xlsx` 批量上传，通过 FastAPI、Celery、Redis 和 PostgreSQL 完成异步解析与总结。旧版 `.doc/.xls` 分别由 Antiword 和 xlrd 提取。
 
 ## 核心接口
 
