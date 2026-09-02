@@ -25,6 +25,8 @@ if [[ ! -f "${DEPLOY_DIR}/.env" ]]; then
   cat >"${DEPLOY_DIR}/.env" <<EOF
 IMAGE=${IMAGE}
 HOST_PORT=${HOST_PORT}
+POSTGRES_IMAGE=postgres:16-alpine
+REDIS_IMAGE=redis:7-alpine
 POSTGRES_PASSWORD=$(random_value)
 API_TOKEN=$(random_value)
 MODEL_API_BASE=https://maas-api.cn-huabei-1.xf-yun.com/v2

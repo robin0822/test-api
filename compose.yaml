@@ -40,7 +40,7 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     container_name: test-api-postgres
     restart: unless-stopped
     environment:
@@ -56,7 +56,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE:-redis:7-alpine}
     container_name: test-api-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
