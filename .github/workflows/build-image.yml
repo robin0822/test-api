@@ -1,8 +1,6 @@
 name: Build and publish ARM64 image
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 env:

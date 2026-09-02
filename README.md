@@ -44,7 +44,7 @@ PUSH=true IMAGE=ghcr.io/robin0822/test-api deploy/build-image.sh
 
 ## 部署
 
-GitHub Actions 在每次推送 `main` 时构建 `linux/arm64` 镜像并发布：
+完成本地 API 验证后，在 GitHub Actions 页面手动触发工作流，构建 `linux/arm64` 镜像并发布：
 
 ```text
 ghcr.io/robin0822/test-api:latest
