@@ -66,6 +66,12 @@ systemctl reload nginx
 
 log '执行最终检查'
 curl -fsS "http://127.0.0.1:${HOST_PORT}/health"
-curl -fsS -H "Host: ${SERVER_NAME}" http://127.0.0.1/health
+for attempt in {1..10}; do
+  if curl -fsS -H "Host: ${SERVER_NAME}" http://127.0.0.1/health; then
+    break
+  fi
+  [[ "${attempt}" -lt 10 ]] || fail '宿主机 Nginx 健康检查失败'
+  sleep 1
+done
 docker ps --filter "name=^/${CONTAINER_NAME}$" --format 'container={{.Names}} status={{.Status}} ports={{.Ports}}'
 log "部署成功：http://${SERVER_NAME}/"
